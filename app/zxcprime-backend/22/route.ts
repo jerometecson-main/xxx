@@ -3,9 +3,34 @@ import { NextRequest, NextResponse } from "next/server";
 import { validateBackendToken } from "@/lib/validate-token";
 
 // ─── Worker URLs ──────────────────────────────────────────────────────────────
-const SHOWBOX_WORKER = "https://mute-resonance-ab25.zxcprime362.workers.dev";
+const SHOWBOX_WORKERS = [
+  "https://mute-resonance-ab25.zxcprime362.workers.dev",
+  "https://febbox.mosangfour.workers.dev",
+  // add more here
+];
+
 const FEBBOX_SHARE_WORKER = "https://super-king-4c14.zxcprime362.workers.dev";
 const FEBBOX_PLAYER_WORKER = "https://muddy-mode-4bb2.zxcprime362.workers.dev";
+
+// ─── Try each ShowBox worker until one succeeds ───────────────────────────────
+
+async function fetchShowBox(qs: URLSearchParams): Promise<any> {
+  // Shuffle so load is distributed randomly across workers
+  const shuffled = [...SHOWBOX_WORKERS].sort(() => Math.random() - 0.5);
+
+  for (const worker of shuffled) {
+    try {
+      const res = await fetchWithTimeout(`${worker}/?${qs}`, {}, 8000);
+      if (!res.ok) continue;
+      const data = await res.json();
+      // Only accept if we actually got a share link
+      if (data?.source_response?.data?.link) return data;
+    } catch (_) {
+      continue;
+    }
+  }
+  return null;
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -40,7 +65,6 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // ── Referer guard ─────────────────────────────────────────────────────────
     const referer = req.headers.get("referer") || "";
     if (
       !referer.includes("/api/") &&
@@ -57,9 +81,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // STEP 1 — ShowBox: get FebBox share link
-    // ─────────────────────────────────────────────────────────────────────────
+    // STEP 1 — ShowBox
     const showboxQs = new URLSearchParams({
       type: mediaType === "tv" ? "tv" : "movie",
       title: title,
@@ -69,39 +91,21 @@ export async function GET(req: NextRequest) {
     if (mediaType === "tv" && episode)
       showboxQs.set("episode", String(episode));
 
-    const showboxRes = await fetchWithTimeout(
-      `${SHOWBOX_WORKER}/?${showboxQs}`,
-      {},
-      8000,
-    );
+    const showboxData = await fetchShowBox(showboxQs);
 
-    if (!showboxRes.ok) {
+    if (!showboxData) {
       return NextResponse.json(
         {
           success: false,
-          error: "ShowBox worker failed",
-          status: showboxRes.status,
+          error: "All ShowBox workers failed or returned no share link",
         },
         { status: 502 },
       );
     }
 
-    const showboxData = await showboxRes.json();
-    const shareLink: string | undefined =
-      showboxData?.source_response?.data?.link;
-
-    if (!shareLink) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "No FebBox share link from ShowBox",
-          showbox: showboxData,
-        },
-        { status: 404 },
-      );
-    }
-
+    const shareLink: string = showboxData.source_response.data.link;
     const shareToken = shareLink.split("/share/")[1];
+
     if (!shareToken) {
       return NextResponse.json(
         {
@@ -112,9 +116,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // STEP 2 — FebBox share: list files, pick best quality
-    // ─────────────────────────────────────────────────────────────────────────
+    // STEP 2 — FebBox share
     const shareRes = await fetchWithTimeout(
       `${FEBBOX_SHARE_WORKER}/?share=${shareToken}`,
       {},
@@ -146,8 +148,6 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Files are already sorted best quality first (4K → 1080p → 720p)
-    // Pick best non-CAM source, fallback to first file
     const bestFile =
       files.find((f) => f.source !== "CAM" && f.quality === "4K") ??
       files.find((f) => f.source !== "CAM" && f.quality === "1080p") ??
@@ -156,9 +156,7 @@ export async function GET(req: NextRequest) {
 
     const fid = bestFile.data_id;
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // STEP 3 — FebBox player: get HLS streams + subtitles
-    // ─────────────────────────────────────────────────────────────────────────
+    // STEP 3 — FebBox player
     const playerRes = await fetchWithTimeout(
       `${FEBBOX_PLAYER_WORKER}/?fid=${fid}&share_key=${shareToken}`,
       {},
@@ -187,8 +185,6 @@ export async function GET(req: NextRequest) {
 
     const streams: Record<string, string> = playerData.streams ?? {};
 
-    // Prefer auto (adaptive) which serves highest quality available,
-    // fallback to explicit quality labels
     const finalM3u8Url =
       streams["auto"] ??
       streams["4k"] ??
@@ -203,9 +199,6 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Return
-    // ─────────────────────────────────────────────────────────────────────────
     return NextResponse.json({
       success: true,
       link: finalM3u8Url,
