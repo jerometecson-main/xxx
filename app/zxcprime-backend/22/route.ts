@@ -5,6 +5,8 @@ import { validateBackendToken } from "@/lib/validate-token";
 // ─── Worker URLs ──────────────────────────────────────────────────────────────
 const SHOWBOX_WORKERS = [
   "https://febbox.jinluxuz.workers.dev/",
+  "https://febbox.mosangfour.workers.dev",
+  "https://shy-pine-01bc.zxcprime366.workers.dev/",
 
   // add more here
 ];
