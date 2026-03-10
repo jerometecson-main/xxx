@@ -482,12 +482,12 @@ async function fetchShareLinkFromSearch(
   year: string,
 ): Promise<string | null> {
   try {
-    const baseUrl =
-      process.env.NODE_ENV === "development"
-        ? "http://localhost:3000"
-        : "https://www.zxcstream.xyz";
+    // const baseUrl =
+    //   process.env.NODE_ENV === "development"
+    //     ? "http://localhost:3000"
+    //     : "https://www.zxcstream.xyz";
     const res = await fetchWithTimeout(
-      `${baseUrl}/api/search`,
+      `https://www.zxcstream.xyz/api/search`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
