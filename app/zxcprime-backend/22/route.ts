@@ -478,6 +478,7 @@ async function dbSave(
 // ─── Search engine: get FebBox share link ─────────────────────────────────────
 
 async function fetchShareLinkFromSearch(
+  req: NextRequest,
   title: string,
   year: string,
 ): Promise<string | null> {
@@ -487,7 +488,7 @@ async function fetchShareLinkFromSearch(
     //     ? "http://localhost:3000"
     //     : "https://www.zxcstream.xyz";
     const res = await fetchWithTimeout(
-      `https://www.zxcstream.xyz/api/search`,
+      `${req.nextUrl.origin}/api/search`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -519,6 +520,9 @@ async function fetchShareLinkFromSearch(
 // ─── Route ────────────────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY missing");
+  }
   try {
     const tmdbId = req.nextUrl.searchParams.get("a");
     const mediaType = req.nextUrl.searchParams.get("b");
@@ -588,7 +592,7 @@ export async function GET(req: NextRequest) {
       let shareLink: string | null;
 
       try {
-        shareLink = await fetchShareLinkFromSearch(title, year);
+        shareLink = await fetchShareLinkFromSearch(req, title, year);
       } catch (err: any) {
         return NextResponse.json(
           {
