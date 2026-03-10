@@ -487,7 +487,7 @@ async function fetchShareLinkFromSearch(
         ? "http://localhost:3000"
         : "https://www.zxcstream.xyz";
     const res = await fetchWithTimeout(
-      `${baseUrl}/zxcprime-backend/search`,
+      `${baseUrl}/api/search`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -530,42 +530,42 @@ export async function GET(req: NextRequest) {
     const token = req.nextUrl.searchParams.get("putanginamo")!;
     const f_token = req.nextUrl.searchParams.get("f_token")!;
 
-    if (!tmdbId || !mediaType || !title || !year || !ts || !token) {
+    if (!tmdbId || !mediaType || !title || !year) {
       return NextResponse.json(
         { success: false, error: "need token" },
         { status: 404 },
       );
     }
 
-    if (Date.now() - ts > 8000) {
-      return NextResponse.json(
-        { success: false, error: "Invalid token" },
-        { status: 403 },
-      );
-    }
+    // if (Date.now() - ts > 8000) {
+    //   return NextResponse.json(
+    //     { success: false, error: "Invalid token" },
+    //     { status: 403 },
+    //   );
+    // }
 
-    if (!validateBackendToken(tmdbId, f_token, ts, token)) {
-      return NextResponse.json(
-        { success: false, error: "Invalid token" },
-        { status: 403 },
-      );
-    }
+    // if (!validateBackendToken(tmdbId, f_token, ts, token)) {
+    //   return NextResponse.json(
+    //     { success: false, error: "Invalid token" },
+    //     { status: 403 },
+    //   );
+    // }
 
-    const referer = req.headers.get("referer") || "";
-    if (
-      !referer.includes("/api/") &&
-      !referer.includes("localhost") &&
-      !referer.includes("http://192.168.1.4:3000/") &&
-      !referer.includes("https://www.zxcstream.xyz/") &&
-      !referer.includes("https://zxcstream.xyz/") &&
-      !referer.includes("https://www.zxcprime.site/") &&
-      !referer.includes("https://zxcprime.site/")
-    ) {
-      return NextResponse.json(
-        { success: false, error: "NAH" },
-        { status: 403 },
-      );
-    }
+    // const referer = req.headers.get("referer") || "";
+    // if (
+    //   !referer.includes("/api/") &&
+    //   !referer.includes("localhost") &&
+    //   !referer.includes("http://192.168.1.4:3000/") &&
+    //   !referer.includes("https://www.zxcstream.xyz/") &&
+    //   !referer.includes("https://zxcstream.xyz/") &&
+    //   !referer.includes("https://www.zxcprime.site/") &&
+    //   !referer.includes("https://zxcprime.site/")
+    // ) {
+    //   return NextResponse.json(
+    //     { success: false, error: "NAH" },
+    //     { status: 403 },
+    //   );
+    // }
 
     // ─────────────────────────────────────────────────────────────────────────
     // CHECK DB — skip Steps 1 & 2 if already stored
