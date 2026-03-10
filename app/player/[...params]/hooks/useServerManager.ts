@@ -39,17 +39,18 @@ export function useServerManager({
 }) {
   const [servers, setServers] = useState<ServerTypes[]>([
     {
-      name: "Atlas (NEW)",
-      server: 22,
-      status: "queue",
-      desc: "Stable, may include 4K and multi-language.",
-    },
-    {
       name: "Icarus",
       server: 11,
       status: "queue",
       desc: "Fast and stable.",
     },
+    {
+      name: "Atlas (NEW)",
+      server: 22,
+      status: "queue",
+      desc: "Stable, may include 4K and multi-language.",
+    },
+
     { name: "Daedalus I", server: 0, status: "queue", desc: "Main Server" },
 
     {
