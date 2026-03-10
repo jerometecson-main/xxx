@@ -1,37 +1,6 @@
-import { fetchWithTimeout } from "@/lib/fetch-timeout";
 import { NextRequest, NextResponse } from "next/server";
 import { validateBackendToken } from "@/lib/validate-token";
-
-async function fetchShareLink(
-  title: string,
-  year: string,
-): Promise<string | null> {
-  try {
-    const res = await fetchWithTimeout(
-      "https://zxcstream.xyz/zxcprime-backend/search",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          q: `febbox ${title} ${year} shared by showbox`,
-        }),
-      },
-      8000,
-    );
-
-    if (!res.ok) return null;
-
-    const data = await res.json();
-    for (const result of (data?.results ?? []) as { url: string }[]) {
-      const match = result.url.match(/febbox\.com\/share\/([A-Za-z0-9_-]+)/);
-      if (match) return `https://www.febbox.com/share/${match[1]}`;
-    }
-    return null;
-  } catch (err: any) {
-    console.warn("Search error:", err.message);
-    return null;
-  }
-}
+import { searchFebboxShareLink } from "@/lib/febbox-search";
 
 export async function GET(req: NextRequest) {
   try {
@@ -62,7 +31,7 @@ export async function GET(req: NextRequest) {
         { status: 403 },
       );
 
-    const shareLink = await fetchShareLink(title, year);
+    const shareLink = await searchFebboxShareLink(title, year);
 
     if (!shareLink)
       return NextResponse.json(
