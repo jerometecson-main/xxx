@@ -19,14 +19,14 @@ async function dbGet(
 ) {
   try {
     let query = supabase
-      .from("media")
+      .from("meta")
       .select(
         `
         id,
-        febbox_share_tokens (
+        streams (
           id,
           share_token,
-          files (*)
+          stream_files (*)
         )
       `,
       )
@@ -43,13 +43,13 @@ async function dbGet(
 
     if (error || !data) return null;
 
-    const token = data.febbox_share_tokens?.[0];
+    const stream = (data.streams as any[])?.[0];
 
-    if (!token) return null;
+    if (!stream) return null;
 
     return {
-      share_token: token.share_token,
-      files: token.files ?? [],
+      share_token: stream.share_token,
+      files: stream.stream_files ?? [],
     };
   } catch (err: any) {
     console.warn("DB read exception:", err.message);
@@ -67,62 +67,19 @@ async function dbSave(
   files: any[],
 ) {
   try {
-    // find existing media
-    let { data: media } = await supabase
-      .from("media")
-      .select("id")
-      .eq("tmdb_id", Number(tmdbId))
-      .eq("media_type", mediaType)
-      .maybeSingle();
+    const { error } = await supabase.rpc("save_stream", {
+      p_tmdb_id: Number(tmdbId),
+      p_media_type: mediaType,
+      p_season: season ? Number(season) : null,
+      p_episode: episode ? Number(episode) : null,
+      p_year: Number(year),
+      p_share_token: shareToken,
+      p_files: files,
+    });
 
-    if (!media) {
-      const { data: newMedia } = await supabase
-        .from("media")
-        .insert({
-          tmdb_id: Number(tmdbId),
-          media_type: mediaType,
-          season: season ? Number(season) : null,
-          episode: episode ? Number(episode) : null,
-          year: Number(year),
-        })
-        .select("id")
-        .single();
-
-      media = newMedia;
-    }
-
-    if (!media) return;
-
-    const { data: token } = await supabase
-      .from("febbox_share_tokens")
-      .insert({
-        media_id: media.id,
-        share_token: shareToken,
-      })
-      .select("id")
-      .single();
-
-    if (!token) return;
-
-    const fileRows = files.map((f: any) => ({
-      stream_id: token.id,
-      data_id: f.data_id,
-      file_name: f.file_name,
-      file_size: f.file_size,
-      file_type: f.file_type,
-      quality: f.quality,
-      source: f.source,
-      codec: f.codec,
-      hdr: f.hdr,
-      thumbnail: f.thumbnail,
-      episode: episode ? Number(episode) : null,
-    }));
-
-    if (fileRows.length > 0) {
-      await supabase.from("files").insert(fileRows);
-    }
+    if (error) console.warn("[dbSave] error:", error);
   } catch (err: any) {
-    console.warn("DB save exception:", err.message);
+    console.warn("[dbSave] exception:", err.message);
   }
 }
 
@@ -132,6 +89,18 @@ function selectBestFile(files: any[]) {
     files.find((f) => f.source !== "CAM" && f.quality === "1080p") ??
     files.find((f) => f.source !== "CAM" && f.quality !== "unknown") ??
     files[0]
+  );
+}
+
+function selectBestStream(streams: Record<string, string>): string {
+  return (
+    streams["1080p"] ??
+    streams["auto"] ??
+    streams["4K"] ??
+    streams["4k"] ??
+    streams["720p"] ??
+    streams["360p"] ??
+    Object.values(streams)[0]
   );
 }
 
@@ -175,21 +144,19 @@ export async function GET(req: NextRequest) {
 
       const bestFile = selectBestFile(files);
 
+      if (!bestFile)
+        return NextResponse.json(
+          { success: false, error: "No files found" },
+          { status: 404 },
+        );
+
       const playerRes = await fetch(
         `${FEBBOX_PLAYER_WORKER}/?fid=${bestFile.data_id}&share_key=${shareToken}`,
       );
 
       const playerData = await playerRes.json();
-
       const streams: Record<string, string> = playerData.streams ?? {};
-
-      const finalUrl =
-        streams["1080p"] ??
-        streams["auto"] ??
-        streams["4k"] ??
-        streams["720p"] ??
-        streams["360p"] ??
-        Object.values(streams)[0];
+      const finalUrl = selectBestStream(streams);
 
       return NextResponse.json({
         success: true,
@@ -238,16 +205,8 @@ export async function GET(req: NextRequest) {
     );
 
     const playerData = await playerRes.json();
-
     const streams: Record<string, string> = playerData.streams ?? {};
-
-    const finalUrl =
-      streams["1080p"] ??
-      streams["auto"] ??
-      streams["4k"] ??
-      streams["720p"] ??
-      streams["360p"] ??
-      Object.values(streams)[0];
+    const finalUrl = selectBestStream(streams);
 
     return NextResponse.json({
       success: true,
