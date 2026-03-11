@@ -13,6 +13,7 @@ import { LineSpinner } from "ldrs/react";
 import "ldrs/react/LineSpinner.css";
 
 import {
+  IconArrowLeft,
   IconBadgeCc,
   IconBadgeCcFilled,
   IconChevronLeft,
@@ -510,17 +511,12 @@ export default function Player() {
                 }`}
               >
                 {backButton && (
-                  <span className="flex items-center gap-2 ">
-                    <button
-                      className=" relative lg:size-7 size-6 flex items-center justify-center "
-                      onClick={() => router.back()}
-                    >
-                      <IconChevronLeft className="absolute lg:size-10 size-8 text-gray-300" />
-                    </button>
-                    <p className=" font-medium lg:text-base text-sm text-muted-foreground">
-                      BACK
-                    </p>
-                  </span>
+                  <button
+                    className=" relative lg:size-7 size-6 flex items-center justify-center "
+                    onClick={() => router.back()}
+                  >
+                    <IconArrowLeft className="absolute lg:size-10 size-8 text-gray-300" />
+                  </button>
                 )}
                 <PlayerServer
                   servers={servers}
