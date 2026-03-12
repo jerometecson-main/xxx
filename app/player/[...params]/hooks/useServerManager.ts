@@ -42,16 +42,21 @@ export function useServerManager({
       name: "Icarus",
       server: 11,
       status: "queue",
-      desc: "Vast Collection & Fast",
+      desc: "Vast Collection, Fast & Stable",
     },
     {
       name: "Atlas (NEW)",
       server: 22,
       status: "queue",
-      desc: "Fast & Stable.",
+      desc: "4K Support, Fast & Stable, Multi Audio",
     },
 
-    { name: "Daedalus I", server: 0, status: "queue", desc: "Multi Audio Support" },
+    {
+      name: "Daedalus I",
+      server: 0,
+      status: "queue",
+      desc: "Multi Audio Support",
+    },
 
     {
       name: "Thanatos II",
